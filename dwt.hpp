@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <vector>
 #include <string_view>
+#include <string>
 namespace pad {
     template<typename T>
     void symmetric(const T *A, T *B, size_t L, size_t N) {
@@ -24,5 +25,57 @@ namespace pad {
 }// namespace pad
 
 
-std::vector<float> signal_expand(std::string_view filter_name, float *siganl, size_t length);
+namespace pad {
+    template<typename T>
+    void symmetric(const T *A, T *B, size_t L, size_t left, size_t right) {
+        size_t N = L + left + right;
+        size_t period = 2 * L;
+        for (size_t i = 0; i < N; ++i) {
+            ptrdiff_t k = static_cast<ptrdiff_t>(i) - static_cast<ptrdiff_t>(left);
+            ptrdiff_t idx = ((k % static_cast<ptrdiff_t>(period)) + static_cast<ptrdiff_t>(period)) % static_cast<ptrdiff_t>(period);
+            if (idx >= static_cast<ptrdiff_t>(L)) {
+                idx = 2 * static_cast<ptrdiff_t>(L) - idx - 1;
+            }
+            B[i] = A[idx];
+        }
+    }
+
+    template<typename T>
+    std::vector<T> symmetric(const std::vector<T> &A, size_t left, size_t right) {
+        size_t L = A.size();
+        size_t N = L + left + right;
+        std::vector<T> B(N);
+        size_t period = 2 * L;
+        for (size_t i = 0; i < N; ++i) {
+            ptrdiff_t k = static_cast<ptrdiff_t>(i) - static_cast<ptrdiff_t>(left);
+            ptrdiff_t idx = ((k % static_cast<ptrdiff_t>(period)) + static_cast<ptrdiff_t>(period)) % static_cast<ptrdiff_t>(period);
+            if (idx >= static_cast<ptrdiff_t>(L)) {
+                idx = 2 * static_cast<ptrdiff_t>(L) - idx - 1;
+            }
+            B[i] = A[idx];
+        }
+        return B;
+    }
+}// namespace pad
+
+class DWT {
+public:
+    DWT(std::string_view filter, int stride);
+    DWT() = delete;
+    void set_data(float *data, size_t length);
+    std::vector<float> &dwt();
+
+public:
+    std::string filter_name_;
+    int window_size_;
+    float *kernel_lo_;
+    float *kernel_hi_;
+    float *orginal_signal_;
+    size_t orgignal_length_;
+    size_t left_p_;
+    size_t right_p_;
+    int stride_;
+    std::vector<float> result_;
+    std::vector<float> expand_signal_;
+};
 #endif

@@ -9,7 +9,7 @@ void Conv1D(int kernel_size);
 
 
 //8,12,16,30
-void conv_8_simd256(float *data, size_t length, float *res);
+void conv_8_simd256(float *data, float *kernel, float *res);
 
 // 卷积核大小为12的卷积操作，步长为2
 void conv_12_simd256(float *data, size_t length, float *res);

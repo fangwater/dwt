@@ -1,32 +1,73 @@
 #include "dwt.hpp"
 #include "bior.hpp"
 #include "coif.hpp"
+#include "conv_kernel.hpp"
 #include "db.hpp"
 #include "sym.hpp"
 #include <cmath>
 #include <cstddef>
+#include <cstdio>
 #include <stdexcept>
+#include <vector>
 
-std::vector<float> signal_expand(std::string_view filter_name, float *siganl, size_t length) {
-    size_t window_size;
-    if (filter_name == filter::bior5_5::name) {
-        window_size = filter::bior5_5::window_size;
-    } else if (filter_name == filter::coif5::name) {
-        window_size = filter::coif5::window_size;
-    } else if (filter_name == filter::db8::name) {
-        window_size = filter::db8::window_size;
-    } else if (filter_name == filter::sym4::name) {
-        window_size = filter::sym4::window_size;
-    } else {
-        throw std::runtime_error("unsupport filter name");
+DWT::DWT(std::string_view filter, int stride) : filter_name_(filter),stride_(stride) {
+    window_size_ = [this]() {
+        if (filter_name_ == filter::bior5_5::name) {
+            kernel_lo_ = const_cast<float *>(filter::bior5_5::low_pass_dec);
+            kernel_hi_ = const_cast<float*>(filter::bior5_5::high_pass_dec);
+            return filter::bior5_5::window_size;
+        } else if (filter_name_ == filter::coif5::name) {
+            kernel_lo_ = const_cast<float *>(filter::coif5::low_pass_dec);
+            kernel_hi_ = const_cast<float *>(filter::coif5::high_pass_dec);
+            return filter::coif5::window_size;
+        } else if (filter_name_ == filter::db8::name) {
+            kernel_lo_ = const_cast<float *>(filter::db8::low_pass_dec);
+            kernel_hi_ = const_cast<float *>(filter::db8::high_pass_dec);
+            return filter::db8::window_size;
+        } else if (filter_name_ == filter::sym4::name) {
+            kernel_lo_ = const_cast<float *>(filter::sym4::low_pass_dec);
+            kernel_hi_ = const_cast<float *>(filter::sym4::high_pass_dec);
+            return filter::sym4::window_size;
+        } else {
+            throw std::runtime_error("unsupport filter name");
+        }
+    }();
+}
+
+void DWT::set_data(float *data, size_t length) {
+    orgignal_length_ = length;
+    orginal_signal_ = data;
+    right_p_ = [this]() {
+        if (orgignal_length_ < window_size_) {
+            return window_size_ - orgignal_length_;
+        } else {
+            return static_cast<size_t>(0);
+        }
+    }();
+    left_p_ = [this]() {
+        //floor((N + L - 1)/2)
+        size_t res_count = std::floor((orgignal_length_ + window_size_ - 1) / 2);
+        result_.resize(res_count);
+        return res_count * stride_;
+    }();
+}
+
+std::vector<float> &DWT::dwt() {
+    expand_signal_.resize(orgignal_length_ + left_p_ + right_p_);
+    pad::symmetric(orginal_signal_, expand_signal_.data(), orgignal_length_, left_p_, right_p_);
+    //从右向做求卷积
+    float *s = expand_signal_.data() + left_p_ - stride_;
+    for (int i = 0; i < result_.size(); i++) {
+        float ss = 0;
+        if (window_size_ == 8) {
+            conv_8_simd256(s, kernel_lo_,&result_[i]);
+        } else {
+            for (int k = 0; k < window_size_; k++) {
+                ss += (*(s + k) * kernel_lo_[k]);
+            }
+            result_[i] = ss;
+        }
+        s = s - stride_;
     }
-    //floor((N + L - 1)/2)
-    size_t signal_count = std::floor((length + window_size - 1) / 2);
-    /**
-     * @brief dwt卷积需要降采样，padding_w = np.ceil(((signal_count * 2 + len(window) - 1 ) - len(signal))/2)
-     */
-    int padding_width = std::ceil(((signal_count * 2 + window_size - 1) - length) / 2);
-    std::vector<float> res(length + 2 * padding_width);
-    pad::symmetric(siganl, res.data(), length, res.size());
-    return res;
+    return result_;
 }
