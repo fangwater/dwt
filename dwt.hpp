@@ -2,9 +2,11 @@
 #define DWT_HPP
 #include <cstddef>
 #include <immintrin.h>
+#include <memory>
 #include <string>
 #include <string_view>
-#include <vector> 
+#include <vector>
+#include "conv_1d.hpp"
 namespace pad {
     template<typename T>
     void symmetric(const T *A, T *B, size_t L, size_t N) {
@@ -80,13 +82,9 @@ public:
     std::vector<float> expand_signal_;
 
 private:
-    void kernel_preload();
-    typedef void (DWT::*conv_func_t)(float *, float *);
-    conv_func_t conv_func_;
-    __m256 kernel_vec256_;
-    __m128 kernel_vec128_;
+    std::unique_ptr<Conv1D> dec_lo_conv_;
+    std::unique_ptr<Conv1D> dec_hi_conv_;
 };
-
 
 
 #endif
