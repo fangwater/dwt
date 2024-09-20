@@ -31,4 +31,8 @@ void conv(float *data, size_t length, float *kernel, int window_size, int step, 
 int main() {
     std::vector<float> A = {1, 2, 3, 5, 12, 9, 8,0,1};
     Kernel k(A.data(), 9);
+    auto p1 = k.get_kernel_vec_256();
+    printf("get 256\n");
+    auto p2 = k.get_kernel_vec_512();
+    printf("get 512\n");
 }
