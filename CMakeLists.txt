@@ -1,9 +1,10 @@
 cmake_minimum_required(VERSION 3.22)
 set(CMAKE_C_COMPILER "/usr/bin/clang-18")
 set(CMAKE_CXX_COMPILER "/usr/bin/clang++-18")
-SET(CMAKE_TOOLCHAIN_FILE "/home/fanghz/lib/vcpkg/scripts/buildsystems/vcpkg.cmake")
+SET(CMAKE_TOOLCHAIN_FILE "/mnt/Data/rpan/software/vcpkg/scripts/buildsystems/vcpkg.cmake")
 project(Agent)
 set(CMAKE_CXX_STANDARD 20)
+include_directories(SYSTEM "/mnt/Data/rpan/software/vcpkg/installed/x64-linux/include")
 SET(CMAKE_BUILD_TYPE "Debug")
 # SET(CMAKE_BUILD_TYPE "Release")
 find_package(Threads REQUIRED)
@@ -12,7 +13,14 @@ find_package(fmt CONFIG REQUIRED)
 find_package(TBB CONFIG REQUIRED)
 find_package(gRPC CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
+# 包含检查编译器标志的模块
+include(CheckCXXCompilerFlag)
 
+# 检查编译器是否支持 -mavx512f
+check_cxx_compiler_flag("-mavx512f" COMPILER_SUPPORTS_AVX512F)
+
+# 检查编译器是否支持 -mavx
+check_cxx_compiler_flag("-mavx" COMPILER_SUPPORTS_AVX)
 set(absl_LIBRARIES
 absl::algorithm
 absl::base
@@ -35,9 +43,13 @@ absl::base
 absl::flags_parse
 absl::utility)
 
-file(GLOB SOURCES ${CMAKE_SOURCE_DIR}/*.cc)
+# file(GLOB SOURCES ${CMAKE_SOURCE_DIR}/*.cc)
+# add_executable(match_engine ${SOURCES})
 
-add_executable(match_engine ${SOURCES} ${PROTO_SOURCES})
+add_executable(match_engine main.cc kernel.cc)
+
+target_compile_options(match_engine PRIVATE -mavx512f)
+target_compile_options(match_engine PRIVATE -mavx)
 
 target_link_libraries(match_engine ${absl_LIBRARIES})
 target_link_libraries(match_engine fmt::fmt)

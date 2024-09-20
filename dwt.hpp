@@ -1,9 +1,10 @@
 #ifndef DWT_HPP
 #define DWT_HPP
 #include <cstddef>
-#include <vector>
-#include <string_view>
+#include <immintrin.h>
 #include <string>
+#include <string_view>
+#include <vector> 
 namespace pad {
     template<typename T>
     void symmetric(const T *A, T *B, size_t L, size_t N) {
@@ -77,5 +78,15 @@ public:
     int stride_;
     std::vector<float> result_;
     std::vector<float> expand_signal_;
+
+private:
+    void kernel_preload();
+    typedef void (DWT::*conv_func_t)(float *, float *);
+    conv_func_t conv_func_;
+    __m256 kernel_vec256_;
+    __m128 kernel_vec128_;
 };
+
+
+
 #endif
