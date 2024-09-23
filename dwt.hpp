@@ -62,24 +62,43 @@ namespace pad {
 }// namespace pad
 
 class DWT {
+private:
+    std::vector<float> set_data(const float *data, size_t length);
+
 public:
     DWT(std::string_view filter, int stride);
     DWT() = delete;
-    void set_data(float *data, size_t length);
-    std::vector<float> &dwt();
+    void dwt(const float *data, size_t length, int level);
+    void printCoefficients() const;
 
 public:
     std::string filter_name_;
     int window_size_;
     float *kernel_lo_;
     float *kernel_hi_;
-    float *orginal_signal_;
+    const float *orginal_signal_;
     size_t orgignal_length_;
     size_t left_p_;
     size_t right_p_;
+    size_t res_count_;
     int stride_;
-    std::vector<float> result_;
     std::vector<float> expand_signal_;
+    // -------
+    // [cA_n, cD_n, cD_n-1, ..., cD2, cD1] : list
+    //     Ordered list of coefficients arrays
+    //     where ``n`` denotes the level of decomposition. The first element
+    //     (``cA_n``) of the result is approximation coefficients array and the
+    //     following elements (``cD_n`` - ``cD_1``) are details coefficients
+    //     arrays.
+    // --------
+    /**
+     * @brief 根据pywt的实现，近似系数（低频部分）只保留最后一层
+     * 近似系数表示信号的低频部分，经过多层变换后，只有最后一层的低频信息最为重要
+     * 在多层小波变换中，每一层的近似系数都会逐层向下传递，最终保留的是最高层的近似系数
+     */
+    std::unique_ptr<std::vector<float>> approx_coeffs_;
+    //每一层的细节系数（高频部分）,每一层都保存
+    std::vector<std::unique_ptr<std::vector<float>>> detail_coeffs_;
 
 private:
     std::unique_ptr<Conv1D> dec_lo_conv_;

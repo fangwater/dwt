@@ -13,14 +13,6 @@ find_package(fmt CONFIG REQUIRED)
 find_package(TBB CONFIG REQUIRED)
 find_package(gRPC CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
-# 包含检查编译器标志的模块
-include(CheckCXXCompilerFlag)
-
-# 检查编译器是否支持 -mavx512f
-check_cxx_compiler_flag("-mavx512f" COMPILER_SUPPORTS_AVX512F)
-
-# 检查编译器是否支持 -mavx
-check_cxx_compiler_flag("-mavx" COMPILER_SUPPORTS_AVX)
 set(absl_LIBRARIES
 absl::algorithm
 absl::base
@@ -43,13 +35,30 @@ absl::base
 absl::flags_parse
 absl::utility)
 
-# file(GLOB SOURCES ${CMAKE_SOURCE_DIR}/*.cc)
-# add_executable(match_engine ${SOURCES})
+# 设置检测程序的源文件
+set(CPU_CHECK_SOURCE "${CMAKE_SOURCE_DIR}/avx_checker.cc")
 
-add_executable(match_engine main.cc kernel.cc)
+# 尝试编译并运行检测程序
+try_run(
+    RUN_RESULT        # 运行结果变量
+    CPU_CHECK_OUTPUT  # 输出结果变量
+    ${CMAKE_BINARY_DIR}  # 运行目录
+    ${CPU_CHECK_SOURCE}  # 源文件路径
+)
 
-target_compile_options(match_engine PRIVATE -mavx512f)
-target_compile_options(match_engine PRIVATE -mavx)
+file(GLOB SOURCES ${CMAKE_SOURCE_DIR}/*.cc)
+list(REMOVE_ITEM SOURCES ${CMAKE_SOURCE_DIR}/avx_checker.cc)
+add_executable(match_engine ${SOURCES})
+
+# 检查返回值是否为1，表示支持 AVX 和 AVX512F
+if(RUN_RESULT EQUAL 1)
+    message(STATUS "CPU supports AVX and AVX512F, adding avx512 compilation flags.")
+    target_compile_options(match_engine PRIVATE -mavx512f -mavx512dq -mevex512)
+else()
+    message(STATUS "CPU does not support AVX512F, add maxv only.")
+    target_compile_options(match_engine PRIVATE -mavx)
+endif()
+
 
 target_link_libraries(match_engine ${absl_LIBRARIES})
 target_link_libraries(match_engine fmt::fmt)

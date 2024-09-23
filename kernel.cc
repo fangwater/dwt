@@ -19,7 +19,6 @@ constexpr bool has_avx512_support() {
 
 
 __attribute__((target("default"))) void Kernel::initialize(const float *kernel_data) {
-    std::cout << "default initialize" << std::endl;
     int chunks256 = kernel_size_ / 8;
     int remainder = kernel_size_ % 8;
     __m256 *kernel_vec256 = nullptr;
@@ -49,7 +48,6 @@ __attribute__((target("default"))) void Kernel::initialize(const float *kernel_d
 
 
 __attribute__((target("avx512f"))) void Kernel::initialize(const float *kernel_data) {
-    std::cout << "avx512f initialize" << std::endl;
     int chunks512 = kernel_size_ / 16;
     int remainder = kernel_size_ % 16;
     __m512 *kernel_vec512 = nullptr;
