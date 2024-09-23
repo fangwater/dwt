@@ -58,62 +58,110 @@ __attribute__((target("avx512f"))) int Conv1D::conv_8_avx512(float *data, float 
     return r;
 }
 
-// __attribute__((target("avx"))) static inline float hsum4_ps(__m128 v) {
-//     // 将 __m128 的 4 个单精度浮点数求和
-//     __m128 shuf = _mm_movehdup_ps(v); // 复制高半部分到低半部分
-//     __m128 sums = _mm_add_ps(v, shuf);// 相加
-//     shuf = _mm_movehl_ps(shuf, sums); // 将高半部分移动到低半部分
-//     sums = _mm_add_ss(sums, shuf);    // 相加并得到最终结果
-//     return _mm_cvtss_f32(sums);       // 提取结果
-// }
+__attribute__((target("default"))) int Conv1D::conv_12(float *data, float *res) {
+    // Load first 8 elements of data
+    __m256 data_vec1 = _mm256_loadu_ps(data);
+    // Load next 4 elements of data into lower half of __m256, upper half is zero
+    __m128 data_high = _mm_loadu_ps(data + 8);
+    __m256 data_vec2 = _mm256_castps128_ps256(data_high);
 
-// __attribute__((target("avx"))) void conv_12_simd256(float *data, float *kernel, float *res) {
-//     // 加载前 8 个元素到 SIMD 寄存器
-//     __m256 data_vec1 = _mm256_loadu_ps(data);
-//     __m256 kernel_vec1 = _mm256_loadu_ps(kernel);
+    // Load first 8 elements of kernel
+    __m256 kernel_vec1 = kernel_.get_kernel_vec_256()[0];
+    // Load next 4 elements of kernel into lower half of __m256, upper half is zero
+    __m128 kernel_high = _mm_loadu_ps(reinterpret_cast<float *>(kernel_.get_kernel_vec_256() + 1));
+    __m256 kernel_vec2 = _mm256_castps128_ps256(kernel_high);
 
-//     // 元素乘法
-//     __m256 mul1 = _mm256_mul_ps(data_vec1, kernel_vec1);
+    // Perform element-wise multiplication
+    __m256 mul1 = _mm256_mul_ps(data_vec1, kernel_vec1);
+    __m256 mul2 = _mm256_mul_ps(data_vec2, kernel_vec2);
 
-//     // 加载后 4 个元素到 SIMD 寄存器
-//     __m128 data_vec2 = _mm_loadu_ps(data + 8);
-//     __m128 kernel_vec2 = _mm_loadu_ps(kernel + 8);
+    // Sum the results horizontally
+    float sum1, sum2;
+    horizontal_sum_m256(&mul1,&sum1);
+    horizontal_sum_m256(&mul2,&sum2);
 
-//     // 元素乘法
-//     __m128 mul2 = _mm_mul_ps(data_vec2, kernel_vec2);
+    // Store the final result
+    res[0] = sum1 + sum2;
+    return 1;
+}
 
-//     // 分别求和
-//     float sum1 = hsum8_ps(mul1);
-//     float sum2 = hsum4_ps(mul2);
+__attribute__((target("avx512f"))) int Conv1D::conv_12(float *data, float *res) {
+    __mmask16 mask = 0x0FFF;// Lower 12 bits set to 1
+    __m512 data_vec = _mm512_maskz_loadu_ps(mask, data);
+    __m512 kernel_vec = _mm512_maskz_loadu_ps(mask, reinterpret_cast<float *>(kernel_.get_kernel_vec_512()));
+    __m512 mul = _mm512_mul_ps(data_vec, kernel_vec);
+    float sum = _mm512_reduce_add_ps(mul);
+    res[0] = sum;
+    return 1;
+}
 
-//     // 合并结果并存储
-//     *res = sum1 + sum2;
-// }
+__attribute__((target("default"))) int Conv1D::conv_16(float *data, float *res) {
+    __m256 data_vec1 = _mm256_loadu_ps(data);
+    __m256 data_vec2 = _mm256_loadu_ps(data + 8);
+    __m256 kernel_vec1 = kernel_.get_kernel_vec_256()[0];
+    __m256 kernel_vec2 = kernel_.get_kernel_vec_256()[1];
+    __m256 mul1 = _mm256_mul_ps(data_vec1, kernel_vec1);
+    __m256 mul2 = _mm256_mul_ps(data_vec2, kernel_vec2);
+    float sum1, sum2;
+    horizontal_sum_m256(&mul1, &sum1);
+    horizontal_sum_m256(&mul2, &sum2);
+    res[0] = sum1 + sum2;
 
-// // 卷积核大小为16的卷积操作，步长为2
-// void conv_16_simd256(float *data, size_t length, float *res) {
-//     const size_t kernel_size = 16;
-//     size_t res_index = 0;
+    return 1;
+}
 
-//     for (size_t i = 0; i + kernel_size <= length; i += 2) {
-//         float sum = 0.0f;
-//         for (size_t j = 0; j < kernel_size; ++j) {
-//             sum += data[i + j];
-//         }
-//         res[res_index++] = sum;
-//     }
-// }
+__attribute__((target("avx512f"))) int Conv1D::conv_16(float *data, float *res) {
+    __m512 data_vec = _mm512_loadu_ps(data);
+    __m512 kernel_vec = kernel_.get_kernel_vec_512()[0];
+    __m512 mul = _mm512_mul_ps(data_vec, kernel_vec);
+    float sum = _mm512_reduce_add_ps(mul);
+    res[0] = sum;
+    return 1;
+}
 
-// // 卷积核大小为30的卷积操作，步长为2
-// void conv_30_simd256(float *data, size_t length, float *res) {
-//     const size_t kernel_size = 30;
-//     size_t res_index = 0;
+__attribute__((target("default"))) int Conv1D::conv_30(float *data, float *res) {
+    float result = 0.0f;
 
-//     for (size_t i = 0; i + kernel_size <= length; i += 2) {
-//         float sum = 0.0f;
-//         for (size_t j = 0; j < kernel_size; ++j) {
-//             sum += data[i + j];
-//         }
-//         res[res_index++] = sum;
-//     }
-// }
+    for (int i = 0; i < 3; i++) {
+        __m256 data_vec = _mm256_loadu_ps(data);
+        __m256 kernel_vec = kernel_.get_kernel_vec_256()[i];
+        __m256 mul = _mm256_mul_ps(data_vec, kernel_vec);
+        float part_sum;
+        horizontal_sum_m256(&mul, &part_sum);
+        result += part_sum;
+    }
+    {
+        alignas(32) int32_t mask_values[8] = {-1, -1, -1, -1, -1, -1, 0, 0};
+        __m256i mask = _mm256_load_si256(reinterpret_cast<const __m256i *>(mask_values));
+
+        __m256 data_vec = _mm256_maskload_ps(data + 24, mask);
+        __m256 kernel_vec = _mm256_maskload_ps(reinterpret_cast<float *>(kernel_.get_kernel_vec_256()) + 24, mask);
+        __m256 mul = _mm256_mul_ps(data_vec, kernel_vec);
+        float part_sum;
+        horizontal_sum_m256(&mul, &part_sum);
+        result += part_sum;
+    }
+    res[0] = result;
+    return 1;
+}
+
+__attribute__((target("avx512f"))) int Conv1D::conv_30(float *data, float *res) {
+    float result = 0.0f;
+    {
+        __m512 data_vec = _mm512_loadu_ps(data);
+        __m512 kernel_vec = kernel_.get_kernel_vec_512()[0];
+        __m512 mul = _mm512_mul_ps(data_vec, kernel_vec);
+        result += _mm512_reduce_add_ps(mul);
+    }
+
+    {
+        __mmask16 mask = 0x3FFF;
+        __m512 data_vec = _mm512_maskz_loadu_ps(mask, data + 16);
+        __m512 kernel_vec = _mm512_maskz_loadu_ps(mask, reinterpret_cast<float *>(kernel_.get_kernel_vec_512()) + 16);
+        __m512 mul = _mm512_mul_ps(data_vec, kernel_vec);
+        result += _mm512_reduce_add_ps(mul);
+    }
+
+    res[0] = result;
+    return 1;
+}

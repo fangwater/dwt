@@ -69,8 +69,8 @@ public:
     DWT(std::string_view filter, int stride);
     DWT() = delete;
     void dwt(const float *data, size_t length, int level);
-    void printCoefficients() const;
-
+    void print_coefficients() const;
+    void print_coefficients_sum() const;
 public:
     std::string filter_name_;
     int window_size_;

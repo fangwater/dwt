@@ -13,7 +13,7 @@
 #include <vector>
 #include <fmt/format.h>
 
-void DWT::printCoefficients() const {
+void DWT::print_coefficients() const {
     // 打印近似系数
     fmt::print("Level {} Approximation Coefficients: \n", detail_coeffs_.size());
     for (const auto &coeff: *approx_coeffs_) {
@@ -31,7 +31,26 @@ void DWT::printCoefficients() const {
     }
 }
 
-DWT::DWT(std::string_view filter, int stride = 2) : filter_name_(filter),stride_(stride) {
+void DWT::print_coefficients_sum() const {
+    // 计算并打印近似系数的和
+    float approx_sum = 0.0f;
+    for (const auto &coeff: *approx_coeffs_) {
+        approx_sum += coeff;
+    }
+    fmt::print("Level {} Approximation Coefficients Sum: {}\n", detail_coeffs_.size(), approx_sum);
+
+    // 逐层计算并打印细节系数的和
+    for (int level = static_cast<int>(detail_coeffs_.size()) - 1; level >= 0; level--) {
+        float detail_sum = 0.0f;
+        auto &detail_coeff = detail_coeffs_[level];
+        for (const auto &coeff: *detail_coeff) {
+            detail_sum += coeff;
+        }
+        fmt::print("Level {} Detail Coefficients Sum: {}\n", level + 1, detail_sum);
+    }
+}
+
+DWT::DWT(std::string_view filter, int stride) : filter_name_(filter),stride_(stride) {
     window_size_ = [this]() {
         if (filter_name_ == filter::bior5_5::name) {
             kernel_lo_ = const_cast<float *>(filter::bior5_5::low_pass_dec);
@@ -78,10 +97,10 @@ std::vector<float> DWT::set_data(const float *data, size_t length) {
 }
 
 void DWT::dwt(const float *data, size_t length, int level) {
-    int max_levels = static_cast<int>(std::floor(std::log2(length)));
-    if (level > max_levels) {
-        throw std::runtime_error(fmt::format("dwt try using level {} but out of range, max level {}",level,max_levels));
-    }
+    // int max_levels = static_cast<int>(std::floor(std::log2(length)));
+    // if (level > max_levels) {
+    //     throw std::runtime_error(fmt::format("dwt try using level {} but out of range, max level {}",level,max_levels));
+    // }
     //level = 1，无需复制数据
     int calc_level = 1;
     while (calc_level <= level) {
