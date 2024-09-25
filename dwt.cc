@@ -16,7 +16,7 @@
 void DWT::print_coefficients() const {
     // 打印近似系数
     fmt::print("Level {} Approximation Coefficients: \n", detail_coeffs_.size());
-    for (const auto &coeff: *approx_coeffs_) {
+    for (const auto &coeff: *approx_coeff_) {
         fmt::print("{} ", coeff);
     }
     fmt::print("\n");
@@ -34,7 +34,7 @@ void DWT::print_coefficients() const {
 void DWT::print_coefficients_sum() const {
     // 计算并打印近似系数的和
     float approx_sum = 0.0f;
-    for (const auto &coeff: *approx_coeffs_) {
+    for (const auto &coeff: *approx_coeff_) {
         approx_sum += coeff;
     }
     fmt::print("Level {} Approximation Coefficients Sum: {}\n", detail_coeffs_.size(), approx_sum);
@@ -108,7 +108,7 @@ void DWT::dwt(const float *data, size_t length, int level) {
             expand_signal_ = set_data(data, length);
         } else {
             //将上一级得到的低频系数作为输入信号进行卷积
-            expand_signal_ = set_data(approx_coeffs_->data(),approx_coeffs_->size());
+            expand_signal_ = set_data(approx_coeff_->data(),approx_coeff_->size());
         }
         //从右向做求卷积
         float *src = expand_signal_.data() + left_p_ - stride_;
@@ -120,7 +120,7 @@ void DWT::dwt(const float *data, size_t length, int level) {
             dec_hi_conv_->conv_1d(src,high_freq_res->data() + i);
             src -= stride_;
         }
-        approx_coeffs_ = std::move(low_freq_res);
+        approx_coeff_ = std::move(low_freq_res);
         detail_coeffs_.push_back(std::move(high_freq_res));
         calc_level++;
     }

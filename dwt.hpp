@@ -96,7 +96,7 @@ public:
      * 近似系数表示信号的低频部分，经过多层变换后，只有最后一层的低频信息最为重要
      * 在多层小波变换中，每一层的近似系数都会逐层向下传递，最终保留的是最高层的近似系数
      */
-    std::unique_ptr<std::vector<float>> approx_coeffs_;
+    std::unique_ptr<std::vector<float>> approx_coeff_;
     //每一层的细节系数（高频部分）,每一层都保存
     std::vector<std::unique_ptr<std::vector<float>>> detail_coeffs_;
 
