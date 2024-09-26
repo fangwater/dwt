@@ -4,7 +4,17 @@
 #include <immintrin.h>
 #include <stdexcept>
 #include "kernel.hpp"
-
+#include <fmt/format.h>
+inline void print_vector(const std::vector<float> &vec) {
+    fmt::print("[");
+    for (size_t i = 0; i < vec.size(); ++i) {
+        fmt::print("{:.3f}", vec[i]);
+        if (i < vec.size() - 1) {
+            fmt::print(", ");
+        }
+    }
+    fmt::print("]\n");
+}
 class Conv1D {
 public:
     using ConvFunction = std::function<int(float *, float *)>;

@@ -2,16 +2,15 @@
 #include "bior.hpp"
 #include "coif.hpp"
 #include "conv_1d.hpp"
-#include <fmt/format.h>
 #include "db.hpp"
 #include "sym.hpp"
 #include <cmath>
 #include <cstddef>
 #include <cstdio>
+#include <fmt/format.h>
 #include <memory>
 #include <stdexcept>
 #include <vector>
-#include <fmt/format.h>
 
 void DWT::print_coefficients() const {
     // 打印近似系数
@@ -50,30 +49,31 @@ void DWT::print_coefficients_sum() const {
     }
 }
 
-DWT::DWT(std::string_view filter, int stride) : filter_name_(filter),stride_(stride) {
-    window_size_ = [this]() {
+DWT::DWT(std::string_view filter, int stride) : filter_name_(filter), stride_(stride) {
+    float *kernel_lo,*kernel_hi;
+    window_size_ = [&]() {
         if (filter_name_ == filter::bior5_5::name) {
-            kernel_lo_ = const_cast<float *>(filter::bior5_5::low_pass_dec);
-            kernel_hi_ = const_cast<float*>(filter::bior5_5::high_pass_dec);
+            kernel_lo = const_cast<float *>(filter::bior5_5::low_pass_dec);
+            kernel_hi = const_cast<float*>(filter::bior5_5::high_pass_dec);
             return filter::bior5_5::window_size;
         } else if (filter_name_ == filter::coif5::name) {
-            kernel_lo_ = const_cast<float *>(filter::coif5::low_pass_dec);
-            kernel_hi_ = const_cast<float *>(filter::coif5::high_pass_dec);
+            kernel_lo = const_cast<float *>(filter::coif5::low_pass_dec);
+            kernel_hi = const_cast<float *>(filter::coif5::high_pass_dec);
             return filter::coif5::window_size;
         } else if (filter_name_ == filter::db8::name) {
-            kernel_lo_ = const_cast<float *>(filter::db8::low_pass_dec);
-            kernel_hi_ = const_cast<float *>(filter::db8::high_pass_dec);
+            kernel_lo = const_cast<float *>(filter::db8::low_pass_dec);
+            kernel_hi = const_cast<float *>(filter::db8::high_pass_dec);
             return filter::db8::window_size;
         } else if (filter_name_ == filter::sym4::name) {
-            kernel_lo_ = const_cast<float *>(filter::sym4::low_pass_dec);
-            kernel_hi_ = const_cast<float *>(filter::sym4::high_pass_dec);
+            kernel_lo = const_cast<float *>(filter::sym4::low_pass_dec);
+            kernel_hi = const_cast<float *>(filter::sym4::high_pass_dec);
             return filter::sym4::window_size;
         } else {
             throw std::runtime_error("unsupport filter name");
         }
     }();
-    dec_lo_conv_ = std::make_unique<Conv1D>(kernel_lo_, window_size_,stride_);
-    dec_hi_conv_ = std::make_unique<Conv1D>(kernel_hi_,window_size_,stride_);
+    dec_lo_conv_ = std::make_unique<Conv1D>(kernel_lo, window_size_,stride_);
+    dec_hi_conv_ = std::make_unique<Conv1D>(kernel_hi,window_size_,stride_);
 }
 
 std::vector<float> DWT::set_data(const float *data, size_t length) {

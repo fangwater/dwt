@@ -74,8 +74,6 @@ public:
 public:
     std::string filter_name_;
     int window_size_;
-    float *kernel_lo_;
-    float *kernel_hi_;
     const float *orginal_signal_;
     size_t orgignal_length_;
     size_t left_p_;
